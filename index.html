@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OCR Analytics Page</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      background-color: #f5f5f5;
+    }
+
+    .header {
+      background-color: #4F6DB0;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 28px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border: 2px solid #4F6DB0;
+      margin: 0 20px 20px 20px;
+      background-color: #ffffff;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      max-width: 33%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 20px;
+    }
+
+    .step-button, .action-button {
+      background-color: #4F6DB0;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 6px;
+      margin-top: 40px;
+    }
+
+    .box {
+      width: 80%;
+      height: 40%;
+      border: 2px solid #4F6DB0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #fff;
+      margin: 20px 0;
+    }
+
+    .output-box {
+      width: 80%;
+      height: 40%;
+      border: 2px solid #4F6DB0;
+      padding: 10px;
+      background-color: #f9f9f9;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    input[type="file"] {
+      margin-top: 10px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="header">OCR Analytics Page</div>
+
+  <div class="container">
+
+    <!-- Step 1 Column -->
+    <div class="column">
+      <button class="step-button">Step 1</button>
+      <div class="box" id="imagePreview">
+        No image selected
+      </div>
+      <input type="file" id="fileInput" accept="image/*" />
+      <button class="action-button" onclick="selectImage()">Select Image</button>
+    </div>
+
+    <!-- Step 2 Column -->
+    <div class="column">
+      <button class="step-button">Step 2</button>
+      <button class="action-button" onclick="analyzeImage()">OCR Analyze</button>
+    </div>
+
+    <!-- Step 3 Column -->
+    <div class="column">
+      <button class="step-button">Step 3</button>
+      <div class="output-box" id="outputBox">
+        OCR Categories Output
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let selectedFile = null;
+
+    const subscriptionKey = 'PUT YOUR API KEY'; // Replace with your key
+    const endpoint = 'PUT YOUR ENDPOINT URL' + '/vision/v3.2/ocr'; // Replace with your endpoint URL + path
+    
+    function selectImage() {
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput.files.length === 0) {
+        alert('Please select an image file.');
+        return;
+      }
+
+      selectedFile = fileInput.files[0];
+
+      const preview = document.getElementById('imagePreview');
+      preview.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(selectedFile);
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '100%';
+      preview.appendChild(img);
+    }
+
+    function analyzeImage() {
+      if (!selectedFile) {
+        alert('Please select an image first.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const arrayBuffer = reader.result;
+
+        fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Ocp-Apim-Subscription-Key': subscriptionKey
+          },
+          body: arrayBuffer
+        })
+        .then(response => response.json())
+        .then(data => {
+          const outputBox = document.getElementById('outputBox');
+          const extractedText = extractTextFromResponse(data);
+          outputBox.innerText = extractedText || 'No text detected.';
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error analyzing image');
+        });
+      };
+
+      reader.readAsArrayBuffer(selectedFile);
+    }
+
+    function extractTextFromResponse(data) {
+      if (!data.regions || data.regions.length === 0) {
+        return 'No text regions found.';
+      }
+
+      return data.regions.map(region =>
+        region.lines.map(line =>
+          line.words.map(word => word.text).join(' ')
+        ).join('\n')
+      ).join('\n\n');
+    }
+  </script>
+
+</body>
+</html>
